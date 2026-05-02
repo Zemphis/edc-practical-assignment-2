@@ -32,7 +32,7 @@ public class InterlockingImpl {
         NEXT.put(11, Arrays.asList(7));
     }
 
-    private static final Set<Integer> ENTRY_SECTIONS = new HashSet<>(Arrays.asList(1,4,7));
+    private enum TrainType{PASSENGER, FREIGHT}
 
     private final Map<Integer, String> sectionOccupant =  new HashMap<>();
     private final Map<Integer, List<Integer>> trainPosition = new HashMap<>();
@@ -47,16 +47,42 @@ public class InterlockingImpl {
     public void addTrain(String trainName, int entryTrackSection, int destinationTrackSection)
             throws IllegalArgumentException, IllegalStateException {
         if (trainSection.containsKey(trainName))
-            throw new IllegalStateException("Train already exists: " + trainName);
-        if (!VALID_SECTIONS.contains(destinationTrackSection))
-            throw new IllegalStateException("Destination track section does not exist: " + destinationTrackSection);
-        if (!hasPath(entryTrackSection, destinationTrackSection))
-            throw new IllegalStateException("No valid path from " + entryTrackSection + " to " + destinationTrackSection));
-        if (sectionOccupant.get(trainName) != null)
-            throw new IllegalStateException( "Entry section " + entryTrackSection + " is already occupied by " + sectionOccupant.get(entryTrackSection)));
+            throw new IllegalStateException("Train name already exists: " + trainName);
+
+        if (!ALL_SECTIONS.contains(entryTrackSection))
+            throw new IllegalStateException("Entry section does not exist: " + entryTrackSection);
+
+        if (!ALL_SECTIONS.contains(destinationTrackSection))
+            throw new IllegalStateException("Destination section does not exist:" + destinationTrackSection));
+
+        boolean isSB = SB_ENTRIES.contains(entryTrackSection);
+        boolean isNB = NB_ENTRIES.contains(entryTrackSection);
+        if (isSB && isNB) throw new IllegalStateException("Section " + entryTrackSection + " is not a valid entry point");
+
+        boolean southbound = isSB;
+
+        Set<Integer> validExits = southbound ? SB_EXITS : NB_EXITS;
+
+        if (!validExits.contains(destinationTrackSection))
+            throw new IllegalArgumentException(
+                    "Section " + destinationTrackSection +
+                            " is not a valid " + (southbound ? "southbound" : "northbound") + " exit");
+
+        TrainType type = (entryTrackSection == 3 || entryTrackSection == 11) ?  TrainType.FREIGHT : TrainType.PASSENGER;
+
+        if (!hasPath(entryTrackSection, destinationTrackSection, type))
+            throw new IllegalStateException("No path exists from section " +
+                    entryTrackSection + " to section " + destinationTrackSection);
+
+        if (sectionOccupant.get(entryTrackSection) != null)
+            throw new IllegalStateException("Entry section " + entryTrackSection +
+                    " is occupied by train " + sectionOccupant.get(entryTrackSection));
+
+
         sectionOccupant.put(entryTrackSection, trainName);
         trainSection.put(trainName, entryTrackSection);
         trainDestination.put(trainName, destinationTrackSection);
+        trainType.put(trainName, type);
     }
 
     @Override
