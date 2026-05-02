@@ -1,8 +1,8 @@
 import java.util.*;
 
 public class InterlockingImpl {
-    private static final Set<Integer> VALID_SECTIONS =
-            new HashSet<> (Arrays.asList(1,2,3,4,5,6,7,8,9,10));
+    private static final Set<Integer> ALL_SECTIONS =
+            new HashSet<> (Arrays.asList(1,2,3,4,5,6,7,8,9,10,11));
 
     private static final Map<Integer, List<Integer>> NEXT = new HashMap<>();
 
@@ -36,6 +36,19 @@ public class InterlockingImpl {
     @Override
     public void addTrain(String trainName, int entryTrackSection, int destinationTrackSection)
             throws IllegalArgumentException, IllegalStateException {
-        if (trainSection.containsKey(trainName)) throw  new IllegalStateException();{}
+        if (trainSection.containsKey(trainName))
+            throw new IllegalStateException("Train already exists: " + trainName);
+        if (!VALID_SECTIONS.contains(destinationTrackSection))
+            throw new IllegalStateException("Destination track section does not exist: " + destinationTrackSection);
+        if (!hasPath(entryTrackSection, destinationTrackSection))
+            throw new IllegalStateException("No valid path from " + entryTrackSection + " to " + destinationTrackSection));
+        if (sectionOccupant.get(trainName) != null)
+            throw new IllegalStateException( "Entry section " + entryTrackSection + " is already occupied by " + sectionOccupant.get(entryTrackSection)));
+        sectionOccupant.put(entryTrackSection, trainName);
+        trainSection.put(trainName, entryTrackSection);
+        trainDestination.put(trainName, destinationTrackSection);
     }
+
+    @Override
+    public int moveTrains(String[] trainNames) throws IllegalArguementException()
 }
