@@ -204,4 +204,42 @@ public class InterlockingImpl {
         }
         return Collections.emptyList();
     }
+
+
+    private int chooseNext(String name, int cur, int dest) {
+        TrainType type = TrainType.get(name);
+
+        int bestSection = -2;
+        int bestLength = Integer.MAX_VALUE;
+
+        for (int candidate : NEXT.getOrDefault(cur, Collections.emptyList())) {
+            if (!typeAllowed(candidate, type)) continue;
+            if (sectionOccupant.get(candidate) != null) continue; // occupied
+            if (candidate != dest && !hasPath(candidate, dest, type)) continue;
+
+            int length = (candidate == dest) ? 0 : shortestPath(candidate, dest, type).size();
+
+            if (length < bestLength) {
+                bestLength = length;
+                bestSection = candidate;
+            }
+        }
+        return bestSection;
+    }
+
+    private Map<String, Integer> resolvedConflicts(List<String> toMove, Map<String, Integer> intended) {
+        Map<String, Integer> result = new LinkedHashMap<>();
+        Set<Integer> visited = new HashSet<>();
+        // track which sections need to be vacated for swap
+        // i.e. does train 1 at x need to move to pos of train 2, which can be moved to x?
+
+        for  (String name : toMove) {
+            if (!intended.containsKey(name)) continue;
+            int target = intended.get(name);
+
+            if (target == -1) {
+                result.put(name, target);
+            }
+        }
+    }
 }
