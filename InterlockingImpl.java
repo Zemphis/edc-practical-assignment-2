@@ -16,7 +16,7 @@ public class InterlockingImpl {
     private static final Set<Integer> NB_EXITS =
             new HashSet<> (Arrays.asList(2,3));
 
-    private static final Map<Integer, List<Integer>> NEXT = new HashMap<>();
+    private static final Map<Integer, List<Integer>> NEXT = new HashMap<>(); // full adjacency list
 
     static {
         NEXT.put(1, Arrays.asList(5));
@@ -47,22 +47,23 @@ public class InterlockingImpl {
     public void addTrain(String trainName, int entryTrackSection, int destinationTrackSection)
             throws IllegalArgumentException, IllegalStateException {
         if (trainSection.containsKey(trainName))
-            throw new IllegalStateException("Train name already exists: " + trainName);
+            throw new IllegalStateException("Train name already exists: " + trainName); // unique name
 
         if (!ALL_SECTIONS.contains(entryTrackSection))
-            throw new IllegalStateException("Entry section does not exist: " + entryTrackSection);
+            throw new IllegalStateException("Entry section does not exist: " + entryTrackSection); // sections must exist
 
         if (!ALL_SECTIONS.contains(destinationTrackSection))
             throw new IllegalStateException("Destination section does not exist:" + destinationTrackSection));
 
+        // determine direction
         boolean isSB = SB_ENTRIES.contains(entryTrackSection);
         boolean isNB = NB_ENTRIES.contains(entryTrackSection);
         if (isSB && isNB) throw new IllegalStateException("Section " + entryTrackSection + " is not a valid entry point");
 
         boolean southbound = isSB;
 
+        // valid destination
         Set<Integer> validExits = southbound ? SB_EXITS : NB_EXITS;
-
         if (!validExits.contains(destinationTrackSection))
             throw new IllegalArgumentException(
                     "Section " + destinationTrackSection +
@@ -78,7 +79,7 @@ public class InterlockingImpl {
             throw new IllegalStateException("Entry section " + entryTrackSection +
                     " is occupied by train " + sectionOccupant.get(entryTrackSection));
 
-
+        // register
         sectionOccupant.put(entryTrackSection, trainName);
         trainSection.put(trainName, entryTrackSection);
         trainDestination.put(trainName, destinationTrackSection);
@@ -86,5 +87,37 @@ public class InterlockingImpl {
     }
 
     @Override
-    public int moveTrains(String[] trainNames) throws IllegalArguementException()
+    public int moveTrains(String[] trainNames) throws IllegalArguementException {
+        for (String name : trainNames) {
+            if (!trainSection.containsKey(name))
+                throw new IllegalArguementException("Unknown train: " + name);
+            if (trainSection.get(name) == -1)
+                throw new ILlegalArguementException("Train has already exited corridor: " + name);
+        }
+
+        List<String> toMove = deup(trainNames);
+
+        Map<String, Integer> intended = new LinkedHashMap<>();
+        for (String name : toMove) {
+            int cur = trainSection.get(name);
+            int dest = trainDestination.get(name);
+            if (cur == dest) {
+                intended.put(name, -1);
+            } else {
+                int next = chooseNext(name, cur, dest);
+                if (next != -2)
+                    intended.put(name, next);
+            }
+        }
+
+        Map<String, Integer> confirmed = resolvedConflicts(toMove, intended);
+
+        int moved = 0;
+
+        for (Map.Entry<String, Integer> entry : confirmed.entrySet()) {
+            String name = entry.getKey();
+            int target = entry.getValue();
+            int cur = trainSection.get(name);
+        }
+    }
 }
