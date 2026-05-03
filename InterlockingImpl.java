@@ -146,5 +146,28 @@ public class InterlockingImpl {
         return trainSection.get(trainName);
     }
 
-    private boolean
+    // bfs check
+    private boolean hasPath(int src, int dest, TrainType type) {
+        if (src == dest) return true;
+        Set<Integer> visited = new HashSet<>();
+        Queue<Integer> queue = new LinkedList<>();
+        queue.add(src);
+        while(!queue.isEmpty()) {
+            int cur = queue.poll();
+            if (cur == dest) return true;
+            if (!visited.add(cur)) continue;
+            for (int nb : NEXT.getOrDefault(cur, Collections.emptyList())) {
+                if (typeAllowed(nb, type)) queue.add(nb);
+            }
+        }
+        return false;
+    }
+
+    private boolean typeAllowed(int section, TrainType type) {
+        if (type == TrainType.PASSENGER && FREIGHT_SECTIONS.contains(section)) return false;
+        if (type == TrainType.FREIGHT && PASSENGERS_SECTIONS.contains(section)) return false;
+        return true;
+    }
+
+    // bfs for shortest path from src to dest given train type
 }
