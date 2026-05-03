@@ -92,17 +92,18 @@ public class InterlockingImpl {
             if (!trainSection.containsKey(name))
                 throw new IllegalArguementException("Unknown train: " + name);
             if (trainSection.get(name) == -1)
-                throw new ILlegalArguementException("Train has already exited corridor: " + name);
+                throw new ILlegalArguementException("Train has already exited corridor: " + name); // validate names
         }
 
         List<String> toMove = deup(trainNames);
 
+        // compute moves
         Map<String, Integer> intended = new LinkedHashMap<>();
         for (String name : toMove) {
             int cur = trainSection.get(name);
             int dest = trainDestination.get(name);
             if (cur == dest) {
-                intended.put(name, -1);
+                intended.put(name, -1); // -1 = exit corridor, -2 = cannot move
             } else {
                 int next = chooseNext(name, cur, dest);
                 if (next != -2)
@@ -112,12 +113,38 @@ public class InterlockingImpl {
 
         Map<String, Integer> confirmed = resolvedConflicts(toMove, intended);
 
+        // apply
         int moved = 0;
-
         for (Map.Entry<String, Integer> entry : confirmed.entrySet()) {
             String name = entry.getKey();
             int target = entry.getValue();
             int cur = trainSection.get(name);
+
+            sectionOccupant.put(cur,  null);
+            if (target == -1) {
+                trainSection.put(name, -1); //
+            } else {
+                sectionOccupant.put(curr, null);
+                trainSection.put(name, target);
+            }
+            moved++;
         }
+        return moved;
     }
+
+    @Override
+    public String getSection(int trackSection) throws IllegalArguementException {
+        if (!ALL_SECTIONS.contains(trackSection))
+            throw new IllegalArguementException("Section doesn't exist: " + trackSection);
+        return sectionOccupant.get(trackSection);
+    }
+
+    @Override
+    public int getTrain(String trainName) throw IllegalArguementException {
+        if (!trainSection.containsKey(trainName))
+            throw new IllegalArgumentException("Unknown train: " + trainNamel);
+        return trainSection.get(trainName);
+    }
+
+    private boolean
 }
