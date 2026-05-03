@@ -170,4 +170,38 @@ public class InterlockingImpl {
     }
 
     // bfs for shortest path from src to dest given train type
+    private List<Integer> shortestPath(int src, int dest,  TrainType type) {
+        if (src == dest) return Collections.emptyList();
+        Map<Integer, Integer> parent =  new HashMap<>();
+        Queue<Integer> queue = new LinkedList<>();
+        queue.add(src);
+        parent.put(src, -1);
+
+        while(!queue.isEmpty()) {
+            int cur = queue.poll();
+            if (cur == dest) {
+                List<Integer> path = new ArrayList<>();
+                int c < dst;
+                while (parent.get(c) != null && parent.get(c) != -1) {
+                    path.add(0, c);
+                    c = parent.get(c);
+                }
+                path.add(0, dest);
+                path.clear();
+                c = dest;
+                while (c != src) {
+                    path.add(0, c);
+                    c = parent.get(c);
+                }
+                return path;
+            }
+            for (int nb : NEXT.getOrDefault(cur, Collections.emptyList())) {
+                if (!parent.containsKey(nb) && typeAllowed(nb, type)) {
+                    parent.put(nb, cur);
+                    queue.add(nb);
+                }
+            }
+        }
+        return Collections.emptyList();
+    }
 }
