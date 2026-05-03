@@ -239,7 +239,23 @@ public class InterlockingImpl {
 
             if (target == -1) {
                 result.put(name, target);
+                continue;
             }
+
+            // target already visited
+            if (visited.contains(target)) continue;
+
+            // head on swap
+            int c = trainSection.get(name);
+            String occupant = sectionOccupant.get(target);
+            if (occupant != null && intended.containsKey(occupant)) {
+                if (intended.get(occupant) == c) continue;
+            }
+            result.put(name, target);
+            visited.add(target);
         }
+        return result;
     }
+
+
 }
