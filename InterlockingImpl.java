@@ -257,5 +257,11 @@ public class InterlockingImpl {
         return result;
     }
 
+    private List<String> deup(String[] names) {
+        List<String> result = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
 
+        for (String n :  names) if (visited.add(n)) result.add(n);
+        return result;
+    }
 }
