@@ -4,10 +4,7 @@ public class InterlockingImpl implements Interlocking {
 
     private static final Set<Integer> ALL_SECTIONS =
             new HashSet<>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11));
-    private static final Set<Integer> FREIGHT_SECTIONS =
-            new HashSet<>(Arrays.asList(3, 7, 11));
-    private static final Set<Integer> PASSENGER_SECTIONS =
-            new HashSet<>(Arrays.asList(1, 2, 4, 5, 6, 8, 9, 10));
+
     private static final Set<Integer> SB_ENTRIES =
             new HashSet<>(Arrays.asList(1, 3));
     private static final Set<Integer> SB_EXITS =
@@ -17,28 +14,25 @@ public class InterlockingImpl implements Interlocking {
     private static final Set<Integer> NB_EXITS =
             new HashSet<>(Arrays.asList(2, 3));
 
-    private static final Map<Integer, List<Integer>> NEXT = new HashMap<>();
+    private static final Map<Integer, List<Integer>> ADJ = new HashMap<>();
 
     static {
-        NEXT.put(1,  Arrays.asList(5));
-        NEXT.put(2,  Arrays.asList(6));
-        NEXT.put(3,  Arrays.asList(7));
-        NEXT.put(4,  Arrays.asList(5));
-        NEXT.put(5,  Arrays.asList(4, 8, 9, 1, 2));
-        NEXT.put(6,  Arrays.asList(9, 10, 2));
-        NEXT.put(7,  Arrays.asList(11, 3));
-        NEXT.put(8,  Arrays.asList(5));
-        NEXT.put(9,  Arrays.asList(5, 6));
-        NEXT.put(10, Arrays.asList(6));
-        NEXT.put(11, Arrays.asList(7));
+        ADJ.put(1,  Arrays.asList(5));
+        ADJ.put(2,  Arrays.asList(6));
+        ADJ.put(3,  Arrays.asList(7));
+        ADJ.put(4,  Arrays.asList(5));
+        ADJ.put(5,  Arrays.asList(4, 8, 9, 1, 2));
+        ADJ.put(6,  Arrays.asList(9, 10, 2));
+        ADJ.put(7,  Arrays.asList(11, 3));
+        ADJ.put(8,  Arrays.asList(5));
+        ADJ.put(9,  Arrays.asList(5, 6));
+        ADJ.put(10, Arrays.asList(6));
+        ADJ.put(11, Arrays.asList(7));
     }
 
-    private enum TrainType { PASSENGER, FREIGHT }
-
-    private final Map<Integer, String>   sectionOccupant = new HashMap<>();
-    private final Map<String, Integer>   trainSection    = new LinkedHashMap<>();
-    private final Map<String, Integer>   trainDest       = new HashMap<>();
-    private final Map<String, TrainType> trainType       = new HashMap<>();
+    private final Map<Integer, String> sectionOccupant = new HashMap<>();
+    private final Map<String, Integer> trainSection = new LinkedHashMap<>();
+    private final Map<String, Integer> trainDestination = new HashMap<>();
 
     public InterlockingImpl() {
         for (int s : ALL_SECTIONS) sectionOccupant.put(s, null);
@@ -49,7 +43,7 @@ public class InterlockingImpl implements Interlocking {
             throws IllegalArgumentException, IllegalStateException {
 
         if (trainSection.containsKey(trainName))
-            throw new IllegalArgumentException("Train name already in use: " + trainName);
+            throw new IllegalArgumentException("Name already in use: " + trainName);
 
         if (!ALL_SECTIONS.contains(entryTrackSection))
             throw new IllegalArgumentException("Entry section does not exist: " + entryTrackSection);
@@ -63,32 +57,28 @@ public class InterlockingImpl implements Interlocking {
             throw new IllegalArgumentException("Section " + entryTrackSection + " is not a valid entry point");
 
         boolean southbound = isSB;
-
         Set<Integer> validExits = southbound ? SB_EXITS : NB_EXITS;
+
         if (!validExits.contains(destinationTrackSection))
-            throw new IllegalArgumentException(
-                    "Section " + destinationTrackSection +
+            throw new IllegalArgumentException("Section " + destinationTrackSection +
                             " is not a valid " + (southbound ? "southbound" : "northbound") + " exit");
 
-        TrainType type = (entryTrackSection == 3 || entryTrackSection == 11)
-                ? TrainType.FREIGHT : TrainType.PASSENGER;
-
-        if (!hasPath(entryTrackSection, destinationTrackSection, type))
-            throw new IllegalArgumentException("No valid path from section " +
-                    entryTrackSection + " to section " + destinationTrackSection);
+        if (!hasPath(entryTrackSection, destinationTrackSection))
+            throw new IllegalArgumentException("No valid path from section " + entryTrackSection +
+                            " to section " + destinationTrackSection);
 
         if (sectionOccupant.get(entryTrackSection) != null)
             throw new IllegalStateException("Entry section " + entryTrackSection +
-                    " is occupied by " + sectionOccupant.get(entryTrackSection));
+                            " is occupied by " + sectionOccupant.get(entryTrackSection));
 
         sectionOccupant.put(entryTrackSection, trainName);
         trainSection.put(trainName, entryTrackSection);
-        trainDest.put(trainName, destinationTrackSection);
-        trainType.put(trainName, type);
+        trainDestination.put(trainName, destinationTrackSection);
     }
 
     @Override
     public int moveTrains(String[] trainNames) throws IllegalArgumentException {
+
         for (String name : trainNames) {
             if (!trainSection.containsKey(name))
                 throw new IllegalArgumentException("Unknown train: " + name);
@@ -100,12 +90,12 @@ public class InterlockingImpl implements Interlocking {
 
         Map<String, Integer> intended = new LinkedHashMap<>();
         for (String name : toMove) {
-            int cur  = trainSection.get(name);
-            int dest = trainDest.get(name);
+            int cur = trainSection.get(name);
+            int dest = trainDestination.get(name);
             if (cur == dest) {
                 intended.put(name, -1);
             } else {
-                int next = chooseNext(name, cur, dest);
+                int next = chooseNext(cur, dest);
                 if (next != -2)
                     intended.put(name, next);
             }
@@ -113,11 +103,12 @@ public class InterlockingImpl implements Interlocking {
 
         Map<String, Integer> confirmed = resolveConflicts(toMove, intended);
 
+        // apply
         int moved = 0;
-        for (Map.Entry<String, Integer> entry : confirmed.entrySet()) {
-            String name   = entry.getKey();
-            int    target = entry.getValue();
-            int    cur    = trainSection.get(name);
+        for (Map.Entry<String, Integer> e : confirmed.entrySet()) {
+            String name = e.getKey();
+            int target = e.getValue();
+            int cur = trainSection.get(name);
 
             sectionOccupant.put(cur, null);
             if (target == -1) {
@@ -134,7 +125,8 @@ public class InterlockingImpl implements Interlocking {
     @Override
     public String getSection(int trackSection) throws IllegalArgumentException {
         if (!ALL_SECTIONS.contains(trackSection))
-            throw new IllegalArgumentException("Section does not exist: " + trackSection);
+            throw new IllegalArgumentException(
+                    "Section does not exist: " + trackSection);
         return sectionOccupant.get(trackSection);
     }
 
@@ -143,98 +135,88 @@ public class InterlockingImpl implements Interlocking {
         if (!trainSection.containsKey(trainName))
             throw new IllegalArgumentException("Unknown train: " + trainName);
         return trainSection.get(trainName);
-    }
 
-    private boolean hasPath(int src, int dest, TrainType type) {
-        if (src == dest) return true;
+    private boolean hasPath(int src, int dst) {
+        if (src == dst) return true;
         Set<Integer>   visited = new HashSet<>();
         Queue<Integer> queue   = new LinkedList<>();
         queue.add(src);
         while (!queue.isEmpty()) {
             int cur = queue.poll();
-            if (cur == dest) return true;
+            if (cur == dst) return true;
             if (!visited.add(cur)) continue;
-            for (int nb : NEXT.getOrDefault(cur, Collections.emptyList()))
-                if (typeAllowed(nb, type)) queue.add(nb);
+            for (int nb : ADJ.getOrDefault(cur, Collections.emptyList()))
+                queue.add(nb);
         }
         return false;
     }
 
-    private boolean typeAllowed(int section, TrainType type) {
-        if (type == TrainType.PASSENGER && FREIGHT_SECTIONS.contains(section))  return false;
-        if (type == TrainType.FREIGHT   && PASSENGER_SECTIONS.contains(section)) return false;
-        return true;
-    }
-
-    private List<Integer> shortestPath(int src, int dest, TrainType type) {
-        if (src == dest) return Collections.emptyList();
-        Map<Integer, Integer> parent = new HashMap<>();
-        Queue<Integer>        queue  = new LinkedList<>();
+    private int bfsDist(int src, int dst) {
+        if (src == dst) return 0;
+        Map<Integer, Integer> dist = new HashMap<>();
+        Queue<Integer>        queue = new LinkedList<>();
         queue.add(src);
-        parent.put(src, -1);
+        dist.put(src, 0);
         while (!queue.isEmpty()) {
             int cur = queue.poll();
-            if (cur == dest) {
-                List<Integer> path = new LinkedList<>();
-                int c = dest;
-                while (c != src) {
-                    path.add(0, c);
-                    c = parent.get(c);
-                }
-                return path;
-            }
-            for (int nb : NEXT.getOrDefault(cur, Collections.emptyList())) {
-                if (!parent.containsKey(nb) && typeAllowed(nb, type)) {
-                    parent.put(nb, cur);
+            int d   = dist.get(cur);
+            for (int nb : ADJ.getOrDefault(cur, Collections.emptyList())) {
+                if (!dist.containsKey(nb)) {
+                    dist.put(nb, d + 1);
+                    if (nb == dst) return d + 1;
                     queue.add(nb);
                 }
             }
         }
-        return Collections.emptyList();
+        return Integer.MAX_VALUE;
     }
 
-    private int chooseNext(String name, int cur, int dest) {
-        TrainType type      = trainType.get(name);
-        int       bestSec   = -2;
-        int       bestLen   = Integer.MAX_VALUE;
+    private int chooseNext(int cur, int dest) {
+        int bestSec = -2;
+        int bestDist = Integer.MAX_VALUE;
 
-        for (int candidate : NEXT.getOrDefault(cur, Collections.emptyList())) {
-            if (!typeAllowed(candidate, type)) continue;
+        for (int candidate : ADJ.getOrDefault(cur, Collections.emptyList())) {
+            // Must be unoccupied
             if (sectionOccupant.get(candidate) != null) continue;
-            if (candidate != dest && !hasPath(candidate, dest, type)) continue;
-
-            int len = (candidate == dest) ? 0 : shortestPath(candidate, dest, type).size();
-            if (len < bestLen) { bestLen = len; bestSec = candidate; }
+            int d = (candidate == dest) ? 0 : bfsDist(candidate, dest);
+            if (d == Integer.MAX_VALUE) continue;
+            if (d < bestDist) {
+                bestDist = d;
+                bestSec  = candidate;
+            }
         }
         return bestSec;
     }
-
-    private Map<String, Integer> resolveConflicts(List<String> toMove,
-                                                  Map<String, Integer> intended) {
+    
+    private Map<String, Integer> resolveConflicts(List<String> order, Map<String, Integer> intended) {
         Map<String, Integer> result  = new LinkedHashMap<>();
-        Set<Integer>         claimed = new HashSet<>();
+        Set<Integer> claimed = new HashSet<>();
 
-        for (String name : toMove) {
+        for (String name : order) {
             if (!intended.containsKey(name)) continue;
             int target = intended.get(name);
+            if (target == -1) {
+                result.put(name, -1);
+                continue;
+            }
 
-            if (target == -1) { result.put(name, -1); continue; }
             if (claimed.contains(target)) continue;
 
-            int    myCur    = trainSection.get(name);
+            int myCur = trainSection.get(name);
             String occupant = sectionOccupant.get(target);
             if (occupant != null && intended.containsKey(occupant)
-                    && intended.get(occupant) == myCur) continue;
+                    && Objects.equals(intended.get(occupant), myCur))
+                continue;
 
             result.put(name, target);
             claimed.add(target);
         }
         return result;
     }
-
+    
     private List<String> dedup(String[] names) {
-        List<String> result  = new ArrayList<>();
-        Set<String>  seen    = new LinkedHashSet<>();
+        List<String> result = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
         for (String n : names) if (seen.add(n)) result.add(n);
         return result;
     }
