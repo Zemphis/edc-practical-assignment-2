@@ -1,6 +1,6 @@
 import java.util.*;
 
-public class InterlockingImpl {
+public class InterlockingImpl implements Interlocking {
     private static final Set<Integer> ALL_SECTIONS =
             new HashSet<> (Arrays.asList(1,2,3,4,5,6,7,8,9,10,11));
     private static final Set<Integer> FREIGHT_SECTIONS =
@@ -34,13 +34,14 @@ public class InterlockingImpl {
 
     private enum TrainType{PASSENGER, FREIGHT}
 
-    private final Map<Integer, String> sectionOccupant =  new HashMap<>();
-    private final Map<Integer, List<Integer>> trainPosition = new HashMap<>();
-    private final Map<Integer, List<Integer>> trainSection = new HashMap<>();
-    private final Map<Integer, List<Integer>> trainDestination = new HashMap<>();
+    private final Map<Integer, String> sectionOccupant = new HashMap<>();
+    private final Map<String, Integer> trainSection = new LinkedHashMap<>();
+    private final Map<String, Integer> trainDestination = new HashMap<>();
+    private final Map<String, TrainType> trainType = new HashMap<>();
+
 
     public InterlockingImpl() {
-        for (int s :VALID_SECTIONS) sectionOccupant.put(s, null);
+        for (int s :ALL_SECTIONS) sectionOccupant.put(s, null);
     }
 
     @Override
@@ -49,8 +50,8 @@ public class InterlockingImpl {
         if (trainSection.containsKey(trainName))
             throw new IllegalStateException("Train name already exists: " + trainName); // unique name
 
-        if (!ALL_SECTIONS.contains(entryTrackSection))
-            throw new IllegalStateException("Entry section does not exist: " + entryTrackSection); // sections must exist
+        if (ALL_SECTIONS.contains(entryTrackSection))
+        throw new IllegalStateException("Entry section does not exist: " + entryTrackSection); // sections must exist
 
         if (!ALL_SECTIONS.contains(destinationTrackSection))
             throw new IllegalStateException("Destination section does not exist:" + destinationTrackSection));
@@ -87,12 +88,12 @@ public class InterlockingImpl {
     }
 
     @Override
-    public int moveTrains(String[] trainNames) throws IllegalArguementException {
+    public int moveTrains(String[] trainNames) throws IllegalArgumentException {
         for (String name : trainNames) {
             if (!trainSection.containsKey(name))
-                throw new IllegalArguementException("Unknown train: " + name);
+                throw new IllegalArgumentException("Unknown train: " + name);
             if (trainSection.get(name) == -1)
-                throw new ILlegalArguementException("Train has already exited corridor: " + name); // validate names
+                throw new IllegalArgumentException("Train has already exited corridor: " + name); // validate names
         }
 
         List<String> toMove = deup(trainNames);
@@ -124,7 +125,7 @@ public class InterlockingImpl {
             if (target == -1) {
                 trainSection.put(name, -1); //
             } else {
-                sectionOccupant.put(curr, null);
+                sectionOccupant.put(target, name);
                 trainSection.put(name, target);
             }
             moved++;
@@ -133,16 +134,16 @@ public class InterlockingImpl {
     }
 
     @Override
-    public String getSection(int trackSection) throws IllegalArguementException {
+    public String getSection(int trackSection) throws IllegalArgumentException {
         if (!ALL_SECTIONS.contains(trackSection))
-            throw new IllegalArguementException("Section doesn't exist: " + trackSection);
+            throw new IllegalArgumentException("Section doesn't exist: " + trackSection);
         return sectionOccupant.get(trackSection);
     }
 
     @Override
-    public int getTrain(String trainName) throw IllegalArguementException {
+    public int getTrain(String trainName) throws IllegalArgumentException {
         if (!trainSection.containsKey(trainName))
-            throw new IllegalArgumentException("Unknown train: " + trainNamel);
+            throw new IllegalArgumentException("Unknown train: " + trainName);
         return trainSection.get(trainName);
     }
 
@@ -181,7 +182,7 @@ public class InterlockingImpl {
             int cur = queue.poll();
             if (cur == dest) {
                 List<Integer> path = new ArrayList<>();
-                int c < dst;
+                int c = dest;
                 while (parent.get(c) != null && parent.get(c) != -1) {
                     path.add(0, c);
                     c = parent.get(c);
@@ -207,7 +208,7 @@ public class InterlockingImpl {
 
 
     private int chooseNext(String name, int cur, int dest) {
-        TrainType type = TrainType.get(name);
+        TrainType type = trainType.get(name);
 
         int bestSection = -2;
         int bestLength = Integer.MAX_VALUE;
