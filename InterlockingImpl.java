@@ -257,6 +257,7 @@ public class InterlockingImpl {
         return result;
     }
 
+    // duplicate array
     private List<String> deup(String[] names) {
         List<String> result = new ArrayList<>();
         Set<String> visited = new HashSet<>();
